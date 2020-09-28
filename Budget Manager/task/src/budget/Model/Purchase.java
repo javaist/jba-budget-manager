@@ -1,6 +1,12 @@
 package budget.Model;
 
 public class Purchase extends Transaction {
+    Category category;
+
+    public Purchase(Category category) {
+        this.category = category;
+    }
+
     @Override
     public double getPrice() {
         return 0d - price;
@@ -14,5 +20,9 @@ public class Purchase extends Transaction {
     @Override
     public void setPrice(double price) {
         this.price = 0d - price;
+    }
+
+    public Category getCategory() {
+        return this.category;
     }
 }
