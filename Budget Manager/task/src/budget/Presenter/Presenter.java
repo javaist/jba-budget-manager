@@ -6,7 +6,12 @@ import budget.Model.Purchase;
 import budget.Model.Transaction;
 import budget.View.View;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Objects;
 import java.util.Scanner;
 
@@ -14,6 +19,7 @@ public class Presenter {
     View view = new View();
     ArrayList<Transaction> transactions = new ArrayList<>();
     Scanner scanner = new Scanner(System.in);
+    String fileName = "purchases.txt";
 
     public void run() {
         int choice;
@@ -33,9 +39,66 @@ public class Presenter {
                 case 4:
                     this.getBalance();
                     break;
+                case 5:
+                    this.saveToFile();
+                    break;
+                case 6:
+                    this.loadFromFile();
+                    break;
             }
         } while (choice != 0);
         view.resultMessage("Bye!");
+    }
+
+
+    private String encode(String string) {
+        byte[] bytes = string.getBytes();
+        return String.format("%s\n", new String(Base64.getEncoder().encode(bytes)));
+    }
+
+    private String decode(String string) {
+        return new String(Base64.getDecoder().decode(string.getBytes()));
+    }
+
+    private void loadFromFile() {
+        try (Scanner fileReader = new Scanner(new File(fileName))) {
+            while (fileReader.hasNext()) {
+                String type = decode(fileReader.nextLine());
+                String text = decode(fileReader.nextLine());
+                double price = Double.parseDouble(decode(fileReader.nextLine()));
+                if (type.contains("Purchase")) {
+                    Category category = Category.valueOf(decode(fileReader.nextLine()));
+                    Purchase transaction = new Purchase(category);
+                    transaction.setPrice(price);
+                    transaction.setText(text);
+                    transactions.add(transaction);
+                } else if (type.contains("Income")) {
+                    Income transaction = new Income();
+                    transaction.setPrice(price);
+                    transaction.setText(text);
+                    transactions.add(transaction);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        view.resultMessage("Purchases were loaded!");
+    }
+
+    private void saveToFile() {
+        try (FileWriter fileWriter = new FileWriter(new File(fileName))) {
+            for (Transaction transaction : transactions) {
+                fileWriter.write(encode(transaction.getClass().toString()));
+                fileWriter.write(encode(transaction.getText()));
+                fileWriter.write(encode(String.valueOf(transaction.getPrice())));
+                if (transaction instanceof Purchase) {
+                    fileWriter.write(encode(((Purchase) transaction).getCategory().toString()));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        view.resultMessage("Purchases were saved!");
     }
 
     private void addIncome() {
@@ -91,7 +154,7 @@ public class Presenter {
             if ("Back".equals(action)) {
                 return;
             }
-
+            view.requestMessage(action + ":");
             int counter = 0;
             double sum = 0;
             for (Transaction transaction : transactions) {
@@ -105,7 +168,7 @@ public class Presenter {
                     }
                 }
             }
-            view.requestMessage(action + ":");
+
             if (counter == 0) {
                 view.resultMessage("Purchase list is empty");
 
@@ -129,23 +192,26 @@ public class Presenter {
 
     private int selectAction() {
         int choice;
+        String[] choices = {
+                "Choose your action:",
+                "1) Add income",
+                "2) Add purchase",
+                "3) Show list of purchases",
+                "4) Balance",
+                "5) Save",
+                "6) Load",
+                "0) Exit"
+        };
         do {
-            view.menu(
-                    "Choose your action:",
-                    "1) Add income",
-                    "2) Add purchase",
-                    "3) Show list of purchases",
-                    "4) Balance",
-                    "0) Exit"
-            );
+            view.menu(choices);
             try {
                 choice = Integer.parseInt(scanner.nextLine());
-                if (0 > choice ||  choice > 4) {
+                if (0 > choice || choice > choices.length - 2) {
                     throw new NumberFormatException();
                 }
                 return choice;
             } catch (NumberFormatException e) {
-                view.resultMessage("Please input a number from 0 to 4");
+                view.resultMessage(String.format("Please input a number from 0 to %d", choices.length - 2));
             }
         } while (true);
     }
